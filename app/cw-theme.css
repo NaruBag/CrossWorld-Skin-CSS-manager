@@ -1,0 +1,175 @@
+/* CrossWorlds-style theme for Crossworld Skin & CSS Manager (layered over the base styles) */
+@font-face{font-family:Barlow;font-weight:400;src:url(fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:500;src:url(fonts/barlow-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:600;src:url(fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:700;src:url(fonts/barlow-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:800;src:url(fonts/barlow-latin-800-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:900;src:url(fonts/barlow-latin-900-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:800;font-style:italic;src:url(fonts/barlow-latin-800-italic.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-weight:900;font-style:italic;src:url(fonts/barlow-latin-900-italic.woff2) format('woff2')}
+
+:root{
+  --cw-blue:#1457e0; --cw-blue2:#0d3fb8; --cw-deep:#0a2a86; --cw-navy:#071a5c; --cw-ink:#0b1f4d;
+  --cw-sky:#3c8cff; --cw-cyan:#36d1ff; --cw-yellow:#ffd21f; --cw-gold:#f2a900; --cw-white:#ffffff;
+  --cw-paper:#eef3fb; --cw-line:rgba(255,255,255,.22);
+  --bg:var(--cw-blue2); --panel:rgba(7,26,92,.72); --panel2:rgba(255,255,255,.08); --line:var(--cw-line);
+  --text:#fff; --muted:#bcd2ff; --accent:var(--cw-sky); --accent2:var(--cw-yellow);
+}
+body{font-family:Barlow,"Segoe UI",system-ui,sans-serif;font-weight:500;font-size:14.5px;letter-spacing:.1px;
+  background:
+    linear-gradient(115deg,transparent 0 62%,rgba(255,255,255,.07) 62% 63.5%,transparent 63.5% 66%,rgba(255,255,255,.05) 66% 70%,transparent 70%),
+    repeating-conic-gradient(rgba(255,255,255,.045) 0 25%,transparent 0 50%) 0 0/56px 56px,
+    radial-gradient(1200px 600px at 85% -10%,#3d8bff 0,transparent 60%),
+    linear-gradient(160deg,#1c6cf2 0%,#1252d6 45%,#0b36a8 100%);
+  background-attachment:fixed}
+
+/* top bar: navy band with a yellow stripe */
+header{background:linear-gradient(180deg,#0a2370,#071a5c);border-bottom:none;box-shadow:0 3px 0 var(--cw-yellow),0 8px 18px rgba(0,0,0,.35);padding:12px 22px}
+header h1{font-weight:900;font-style:italic;font-size:24px;letter-spacing:.5px;text-transform:uppercase;text-shadow:0 2px 0 #0008}
+header h1 span{color:var(--cw-yellow)}
+header p{color:var(--muted)}
+
+/* tabs: letter-key chips like the game's loadout tabs */
+.tabs{background:transparent;border:none;gap:8px;padding:0}
+.tabs button{background:linear-gradient(180deg,#2b6ff0,#1a50c9);color:#fff;border:2px solid #fff;border-radius:9px;padding:7px 16px;
+  font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.4px;box-shadow:0 3px 0 #06155033}
+.tabs button.on{background:linear-gradient(180deg,#ffe25a,var(--cw-yellow));color:var(--cw-ink);border-color:#fff7cc;transform:translateY(-3px);box-shadow:0 5px 0 #9a6b00,0 0 14px rgba(255,210,31,.55)}
+
+/* status pills: white capsules */
+.pill{background:#fff;color:var(--cw-ink);border:none;border-radius:20px;font-weight:700;padding:5px 12px;box-shadow:0 2px 0 #0003}
+.pill.ok{background:#fff;color:#0b6b3a;border:none}
+.pill.bad{background:#fff;color:#c0281b;border:none}
+
+/* buttons */
+button{background:rgba(255,255,255,.12);color:#fff;border:2px solid rgba(255,255,255,.55);border-radius:9px;font-weight:700}
+button:hover{border-color:#fff;background:rgba(255,255,255,.2)}
+button.primary{position:relative;color:#fff;border:none;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.8px;
+  background:
+    repeating-conic-gradient(rgba(255,255,255,.12) 0 25%,transparent 0 50%) 0 0/18px 18px,
+    linear-gradient(90deg,#0f59e6,#1f86ff 50%,#0f59e6);
+  clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);text-shadow:0 2px 0 #0a2a86}
+button.primary:hover{filter:brightness(1.12)}
+button.primary:disabled{filter:grayscale(.6) brightness(.85);opacity:.7}
+button.big{padding:15px;font-size:20px}
+
+/* inputs: white bars with navy text (like the Steering Assist bar) */
+input[type=text],input[type=search]{background:#fff;color:var(--cw-ink);border:2px solid #fff;border-radius:22px;padding:8px 14px;font-weight:700}
+input::placeholder{color:#7f93bd;font-weight:600}
+input:focus{border-color:var(--cw-yellow);box-shadow:0 0 0 3px rgba(255,210,31,.45)}
+
+/* panels / cards: deep navy plates with a white rim */
+.panel,.card{background:linear-gradient(180deg,rgba(10,42,134,.88),rgba(7,26,92,.92));border:2px solid rgba(255,255,255,.75);border-radius:12px;
+  box-shadow:inset 0 0 0 3px rgba(60,140,255,.35),0 6px 18px rgba(0,0,0,.28)}
+.card h2{display:inline-flex;align-items:center;gap:10px;background:#fff;color:var(--cw-ink);border-radius:22px;padding:5px 18px 5px 6px;
+  font-size:16px;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.4px;margin:0 0 14px;box-shadow:0 3px 0 #0004}
+.card h2 .n{background:var(--cw-yellow);color:var(--cw-ink);width:28px;height:28px;border-radius:7px;font-size:15px;font-weight:900;transform:skewX(-10deg);box-shadow:0 2px 0 #9a6b00}
+.card h2 .muted,.card h2 span.muted{color:#5b6f9c!important;text-transform:none;font-style:normal;font-weight:600}
+.muted{color:var(--muted)}
+
+/* banners */
+.combobar{border:2px solid #fff;border-radius:12px;background:linear-gradient(90deg,#0a2a86,#1457e0);box-shadow:0 4px 0 #0003}
+.combobar.done{border-color:#fff;background:linear-gradient(90deg,#0d6b3c,#1457e0)}
+.combobar.err{border-color:#fff;background:linear-gradient(90deg,#9c1c14,#1457e0)}
+
+/* mod list */
+.drop{border:3px dashed rgba(255,255,255,.6);border-radius:12px;color:var(--muted);background:rgba(255,255,255,.06)}
+.drop b{font-weight:900;font-style:italic;text-transform:uppercase;font-size:17px}
+body.dragover .drop,.drop.hot{border-color:var(--cw-yellow);background:rgba(255,210,31,.12)}
+#mods li{background:rgba(255,255,255,.07);border:2px solid transparent;border-radius:10px;margin-bottom:6px}
+#mods li:hover{background:rgba(255,255,255,.15)}
+#mods li.sel{background:linear-gradient(90deg,rgba(255,210,31,.28),rgba(255,255,255,.08));border-color:var(--cw-yellow);box-shadow:0 0 12px rgba(255,210,31,.35)}
+#mods .th{border-radius:6px;border:2px solid #fff;transform:skewX(-6deg)}
+#mods .nm{font-weight:800}
+.tag{border-radius:6px;font-weight:800;text-transform:uppercase;font-size:10px;padding:1px 6px}
+.tag.cfg{background:#fff;color:var(--cw-blue2)} .tag.port{background:var(--cw-yellow);color:var(--cw-ink)} .tag.off{background:#0006;color:#ddd}
+.voiceline{color:#cfe0ff}
+
+/* hero */
+.hero .img{border:3px solid #fff;border-radius:10px;transform:skewX(-4deg);box-shadow:0 4px 0 #0004}
+.hero h3{font-weight:900;font-style:italic;font-size:26px;text-transform:uppercase;letter-spacing:.3px;text-shadow:0 2px 0 #0008}
+
+/* configure box */
+.cfgbox{border:2px solid rgba(255,255,255,.6);border-radius:10px}
+.cfgtabs{background:rgba(3,14,56,.65)}
+.cfgtabs button{background:rgba(255,255,255,.1);border:2px solid transparent;border-radius:8px;font-weight:800}
+.cfgtabs button.on{background:#fff;color:var(--cw-ink);border-color:var(--cw-yellow)}
+.cfgtabs button small{color:#a9c1f0} .cfgtabs button.on small{color:var(--cw-blue2)}
+.cfgopts{background:rgba(255,255,255,.06)}
+.cfgopts input{accent-color:var(--cw-yellow)}
+.cfgopts label{font-weight:700}
+
+/* slot tiles: the game's select grid */
+.tiles{background:
+    repeating-conic-gradient(rgba(255,255,255,.06) 0 25%,transparent 0 50%) 0 0/40px 40px,
+    linear-gradient(135deg,#0b3aa8,#1f6cf0 55%,#0b3aa8);border:2px solid #fff;border-radius:12px}
+.tile{border:3px solid #fff;background:#e9f0fb}
+.tilewrap.on .tile{outline:4px solid var(--cw-yellow);box-shadow:0 0 0 8px rgba(255,210,31,.35),0 0 22px rgba(255,210,31,.6)}
+.tilewrap .lbl{font-weight:900;font-style:italic;text-transform:uppercase;font-size:13px}
+.arrowrow .arrow{color:var(--cw-yellow)}
+.src{border:2px solid rgba(255,255,255,.4);border-radius:10px}
+.src.on{border-color:var(--cw-yellow);background:rgba(255,210,31,.15)}
+
+/* results / notes */
+.result.ok{background:linear-gradient(90deg,rgba(13,107,60,.85),rgba(7,26,92,.6));border:2px solid #fff}
+.result.err{background:linear-gradient(90deg,rgba(156,28,20,.85),rgba(7,26,92,.6));border:2px solid #fff}
+.result h4{font-weight:900;font-style:italic;text-transform:uppercase}
+.conflict{background:#fff;color:#5a3d00;border:2px solid var(--cw-yellow);border-radius:10px}
+.conflict b{color:#9a5b00}
+#log{background:rgba(3,14,56,.75);border:2px solid rgba(255,255,255,.35);color:#cfe0ff}
+.copies .c{background:rgba(255,255,255,.1)}
+.seg{border:2px solid #fff;border-radius:10px}
+.seg button{border:none;border-radius:0}
+.seg button.on{background:var(--cw-yellow);color:var(--cw-ink)}
+.spin{border-color:#fff4;border-top-color:var(--cw-yellow)}
+dialog{background:linear-gradient(180deg,#0a2a86,#071a5c);border:2px solid #fff;border-radius:14px}
+dialog h3{font-weight:900;font-style:italic;text-transform:uppercase}
+.empty .big{filter:drop-shadow(0 3px 0 #0005)}
+.empty b{font-weight:900;font-style:italic;text-transform:uppercase;font-size:17px}
+#cssNote{background:#071a5c;border-bottom:3px solid var(--cw-yellow)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.45);border-radius:6px}
+::-webkit-scrollbar-track{background:rgba(3,14,56,.35)}
+.tabs button,#btnSettings,.pill{white-space:nowrap}
+#btnSettings{border-radius:20px;padding:6px 14px}
+/* brand: game logo with the tool name under it */
+.brand{display:flex;flex-direction:column;align-items:center;flex:none;margin:-4px 6px -6px 0}
+.brand img{height:62px;display:block;filter:drop-shadow(0 3px 2px rgba(0,0,0,.45))}
+.brand .sub{margin-top:-3px;padding:1px 12px;background:var(--cw-yellow);color:var(--cw-ink);border-radius:6px;transform:skewX(-10deg);
+  font-weight:900;font-style:italic;font-size:12.5px;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 0 #9a6b00}
+/* first-run setup overlay */
+.setup{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:30px;
+  background:repeating-conic-gradient(rgba(255,255,255,.04) 0 25%,transparent 0 50%) 0 0/56px 56px,rgba(4,16,64,.78);backdrop-filter:blur(3px)}
+.setupcard{width:min(760px,100%);max-height:100%;overflow:auto;background:linear-gradient(180deg,#0f3aa6,#0a2a86 40%,#071a5c);border:3px solid #fff;border-radius:16px;
+  padding:22px 26px;box-shadow:inset 0 0 0 4px rgba(60,140,255,.35),0 0 0 4px var(--cw-yellow),0 18px 50px rgba(0,0,0,.5)}
+.sthead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.stt{font-weight:900;font-style:italic;text-transform:uppercase;font-size:22px;letter-spacing:.5px;text-shadow:0 2px 0 #0008}
+.stdots{display:flex;gap:8px}
+.stdots span{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:20px;padding:3px 12px 3px 3px;font-weight:800;font-size:12px;text-transform:uppercase;color:#bcd2ff}
+.stdots span b{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);color:#fff}
+.stdots span.on{background:#fff;color:var(--cw-ink)} .stdots span.on b{background:var(--cw-yellow);color:var(--cw-ink)}
+.stdots span.done b{background:#1fa67a}
+.setupcard h3{margin:4px 0 6px;font-weight:900;font-style:italic;text-transform:uppercase;font-size:20px;color:var(--cw-yellow)}
+.setupcard .lead{margin:0 0 14px;color:#dfe9ff;line-height:1.5}
+.strow{display:flex;align-items:center;gap:14px;background:#fff;color:var(--cw-ink);border-radius:12px;padding:12px 14px;margin-bottom:10px;border:3px solid #fff;box-shadow:0 3px 0 #0005}
+.strow.on{border-color:#1fa67a}
+.strow.missing,.strow.off{border-color:var(--cw-yellow)}
+.stinfo{flex:1;min-width:0}
+.stn{font-weight:900;font-size:16px}
+.stn small{font-weight:600;color:#5b6f9c;font-size:12.5px;margin-left:4px}
+.stw{color:#41557f;font-size:13px;margin-top:1px}
+.sts{display:inline-block;margin-top:5px;font-weight:800;font-size:12px;padding:2px 9px;border-radius:12px}
+.sts.on{background:#d9f5e8;color:#0b6b3a} .sts.off{background:#fff1c2;color:#8a5a00} .sts.missing{background:#ffe0dc;color:#b3261e}
+.stok{font-size:26px;color:#1fa67a;font-weight:900;padding:0 8px}
+.strow button.primary{white-space:nowrap;font-size:14px;padding:10px 22px}
+.stfoot{display:flex;align-items:center;gap:14px;margin-top:6px}
+.stfoot .muted{flex:1;font-size:12.5px}
+.stact{display:flex;align-items:center;gap:12px;margin-top:6px}
+.stact .big{width:auto;flex:1}
+/* header must fit narrow windows: empty tagline takes no room, pills shrink, and it wraps as a last resort */
+header{flex-wrap:nowrap;min-width:0}
+header p#tagline{min-width:0}
+header p#tagline:empty{flex:1 1 0;min-width:0}
+header .pill{min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+#btnSettings{flex:none}
+@media (max-width:1150px){ header .tabs button{padding:7px 11px} header .pill{font-size:11.5px;padding:4px 9px} header{gap:10px} }
+@media (max-width:1000px){ .brand img{height:50px} #btnSettings{font-size:0;padding:6px 10px} #btnSettings::first-letter{font-size:16px} }

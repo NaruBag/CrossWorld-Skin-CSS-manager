@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Crossworld Skin &amp; CSS Manager</title>
+<style>
+  :root{
+    --bg:#0d1220; --panel:#151c2e; --panel2:#1b2439; --line:#2a3550; --text:#e8ecf5; --muted:#8e9ab5;
+    --accent:#2f7dff; --accent2:#ffcc33; --ai:#6b5bd6; --ok:#1fa67a; --warn:#ff6b5b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+  header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;background:linear-gradient(90deg,#10204a,#0d1220 60%);flex:none}
+  header h1{margin:0;font-size:19px;letter-spacing:.2px;white-space:nowrap}
+  header h1 span{color:var(--accent2)}
+  header p{margin:0;color:var(--muted);flex:1;min-width:200px}
+  .tabs{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:3px}
+  .tabs button{border:none;background:none;padding:6px 12px;border-radius:7px;font-weight:600;color:var(--muted)}
+  .tabs button.on{background:var(--accent);color:#fff}
+  #cssView{flex:1;min-height:0;display:flex;flex-direction:column}
+  #cssView iframe{flex:1;border:0;width:100%;background:#0b3aa8}
+  #cssNote{padding:7px 22px;font-size:12.5px;color:var(--muted);background:#10172a;border-bottom:1px solid var(--line)}
+  #cssNote b{color:#ffcc33}
+  .pill{font-size:12px;padding:3px 9px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .pill.ok{color:#bff3df;border-color:#1f6b52;background:#123528}
+  .pill.bad{color:#ffd2cc;border-color:#7a2f27;background:#3a1714}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 11px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.big{width:100%;padding:13px;font-size:15px}
+  button.small{padding:3px 8px;font-size:12px}
+  button.danger:hover{border-color:var(--warn);color:#ffb3a9}
+  input[type=text],input[type=search]{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font:inherit;width:100%}
+  input:focus{outline:none;border-color:var(--accent)}
+  .combobar{margin:12px 22px 0;padding:12px 16px;border-radius:12px;border:1px solid #2f5fd0;background:linear-gradient(90deg,#14306f,#121a33);display:flex;gap:14px;align-items:center;flex:none}
+  .combobar .t{flex:1;font-size:13.5px;line-height:1.45}
+  .combobar .t b{color:#fff}
+  .combobar button{white-space:nowrap}
+  .combobar.done{border-color:#2e7d4f;background:linear-gradient(90deg,#123a26,#121a33)}
+  .combobar.err{border-color:#a33;background:linear-gradient(90deg,#3a1414,#121a33)}
+  .layout{flex:1;display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;padding:16px 22px;min-height:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .left{display:flex;flex-direction:column;min-height:0}
+  .drop{margin:12px;border:2px dashed #3a4a72;border-radius:10px;padding:16px;text-align:center;color:var(--muted);transition:.15s}
+  .drop b{color:var(--text);display:block;font-size:15px;margin-bottom:2px}
+  body.dragover .drop, .drop.hot{border-color:var(--accent2);background:#1d2540;color:var(--text)}
+  .lefttools{padding:0 12px 10px;display:flex;gap:6px}
+  #mods{list-style:none;margin:0;padding:0 8px 10px;overflow:auto;flex:1}
+  #mods li{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:7px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:3px}
+  #mods li:hover{background:var(--panel2)}
+  #mods li.sel{background:#1d2d52;border-color:var(--accent)}
+  #mods .th{width:52px;height:38px;border-radius:5px;background:#24304d center/cover no-repeat}
+  #mods .nm{font-weight:600;display:flex;align-items:center;min-width:0}
+  #mods .nm .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  #mods .nm .tag{flex:none}
+  #mods li.offToggle{display:block;cursor:pointer;color:var(--muted);font-size:12.5px;padding:8px 10px;border:1px dashed var(--line);margin:6px 0}
+  #mods li.offToggle:hover{color:var(--text);border-color:var(--accent)}
+  #mods li.isoff .th,#mods li.isoff .nm .t,#mods li.isoff .au{opacity:.45}
+  #mods .au{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tag{font-size:10.5px;padding:0 6px;border-radius:9px;margin-left:5px;vertical-align:1px;font-weight:600}
+  .tag.cfg{background:#2b3a62;color:#b9c9ff} .tag.port{background:var(--ai)} .tag.off{background:#444;color:#bbb}
+  .main{overflow:auto;min-height:0;padding-right:4px}
+  .empty{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--muted);text-align:center;gap:8px}
+  .empty .big{font-size:44px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+  .card h2{font-size:14px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .card h2 .n{background:var(--accent2);color:#1b1b1b;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+  .muted{color:var(--muted)}
+  .hero{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+  .hero .img{width:220px;height:124px;border-radius:8px;background:#24304d center/cover no-repeat;border:1px solid var(--line)}
+  .hero h3{margin:0 0 2px;font-size:20px}
+  .hero .desc{margin-top:6px;color:#c6cfe2}
+  /* BlueStar-like configure */
+  .cfgbox{display:grid;grid-template-columns:230px 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:180px}
+  .cfgtabs{background:#11182a;padding:8px;display:flex;flex-direction:column;gap:6px}
+  .cfgtabs button{text-align:left;background:#252b3b;border-color:transparent;border-radius:3px;padding:10px 12px}
+  .cfgtabs button.on{background:#1479d6;color:#fff}
+  .cfgtabs button small{display:block;color:#9fb4d6;font-size:11.5px;margin-top:1px}
+  .cfgtabs button.on small{color:#d7e8ff}
+  .cfgopts{padding:12px 16px;background:#1d2130}
+  .cfgopts .d{color:#d9deea;margin-bottom:8px;font-size:13px}
+  .cfgopts h4{margin:0 0 6px;font-size:13.5px}
+  .cfgopts label{display:flex;gap:9px;align-items:center;padding:4px 0;cursor:pointer}
+  .cfgopts input{accent-color:#8f7bff;width:15px;height:15px}
+  .files{margin-top:8px;font-size:12px;color:var(--muted)}
+  .files code{color:#b9c9ff}
+  /* source + targets */
+  .srcrow{display:flex;gap:10px;flex-wrap:wrap}
+  .voiceline{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .warnline{font-size:11.5px;color:#ffcc33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .conflict{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;margin-bottom:14px;border-radius:9px;border:1px solid #6b5418;background:#2e2610;color:#ffdf80;font-size:13px}
+  .conflict b{color:#ffcc33}
+  .src{display:flex;gap:12px;align-items:center;padding:8px 14px 8px 8px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer}
+  .src.on{border-color:var(--accent);background:#1d2d52}
+  .src .ic{width:64px;height:50px}
+  .tile.sm{width:78px;height:60px;overflow:hidden;flex:none;margin-left:4px}
+  .tile.sm .im{transform:skewX(6deg) scale(1.12)}
+  .src b{display:block;font-size:15px}
+  .tiles{display:flex;gap:18px;flex-wrap:wrap;padding:14px 16px;border-radius:8px;background:linear-gradient(135deg,#0b3aa8,#1453d6 55%,#0b3aa8)}
+  .tilewrap{display:flex;flex-direction:column;align-items:center;gap:7px;width:132px;cursor:pointer}
+  .tile{position:relative;width:126px;height:98px;transform:skewX(-6deg);border-radius:3px;background:#dfe7f3;transition:transform .12s}
+  .tilewrap:hover .tile{transform:skewX(-6deg) translateY(-2px)}
+  .tile .im{position:absolute;inset:0;background:center/cover no-repeat;transform:skewX(6deg) scale(1.06);border-radius:3px}
+  .tile .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:700;color:#1d2433;transform:skewX(6deg)}
+  .tilewrap.on .tile{outline:4px solid #2f9bff;outline-offset:2px;box-shadow:0 0 0 7px rgba(47,155,255,.35)}
+  .tilewrap .lbl{font-weight:700;font-size:12.5px;text-align:center;text-shadow:0 1px 2px #0008}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:0}
+  .arrowrow{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .arrowrow .arrow{font-size:26px;color:var(--accent2)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:12px}
+  .seg button{border:none;border-radius:0;padding:9px 14px;background:var(--panel2)}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .row{display:flex;gap:10px;align-items:center;margin:8px 0}
+  .row label{color:var(--muted);min-width:110px}
+  label.chk{display:flex;gap:7px;align-items:center;color:#c6cfe2;cursor:pointer;margin-top:6px}
+  #log{background:#0a0f1b;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:12px/1.5 ui-monospace,Consolas,monospace;max-height:180px;overflow:auto;color:#9fb0d4;margin-top:12px}
+  .result{border-radius:10px;padding:14px 16px;margin-top:12px}
+  .result.ok{background:#11301f;border:1px solid #1f6b52}
+  .result.err{background:#3a1714;border:1px solid #7a2f27}
+  .result h4{margin:0 0 6px;font-size:15px}
+  .copies{display:flex;flex-direction:column;gap:6px}
+  .copies .c{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:7px;background:var(--panel2)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff3;border-top-color:var(--accent2);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none!important}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:20px;width:560px}
+  dialog::backdrop{background:#0009}
+  dialog h3{margin:0 0 12px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:8px}
+</style>
+<link rel="stylesheet" href="cw-theme.css">
+</head>
+<body>
+<header>
+  <div class="brand"><img src="logo.png" alt="Sonic Racing CrossWorlds"><div class="sub">Skin &amp; CSS Manager</div></div>
+  <nav class="tabs"><button id="tabPort" class="on">🎨 Port skins</button><button id="tabCss">▦ CSS order</button></nav>
+  <p id="tagline"></p>
+  <span id="pGame" class="pill">Game…</span>
+  <span id="pCsse" class="pill">True CSSE…</span>
+  <button id="pVoice" class="pill" style="cursor:pointer" title="">🔊 Voices…</button>
+  <button id="btnSettings" title="Settings">⚙ Settings</button>
+</header>
+<div id="setup" class="setup hidden"><div class="setupcard" id="setupCard"></div></div>
+<div id="voiceBar" class="combobar hidden"><span style="font-size:22px">🔊</span><div class="t" id="voiceText"></div><button id="voiceNo" class="hidden">Cancel</button><button id="voiceBtn" class="primary"></button></div>
+<div id="comboBar" class="combobar hidden"><span style="font-size:22px">🧩</span><div class="t" id="comboText"></div><button id="comboBtn" class="primary"></button></div>
+
+<div class="layout">
+  <aside class="panel left">
+    <div class="drop" id="drop"><b>Drop a mod here</b>the .zip / .rar / .7z from GameBanana, or a mod folder</div>
+    <div class="lefttools"><input type="search" id="q" placeholder="Search your mods…"><button id="btnRefresh" title="Refresh">⟳</button></div>
+    <ul id="mods"></ul>
+  </aside>
+
+  <section class="main" id="main">
+    <div id="statusWrap" class="card hidden"><span class="spin"></span><span id="status"></span></div>
+    <div class="empty" id="empty"><div class="big">🎨</div><div><b style="color:var(--text)">Pick a mod on the left, or drop one anywhere in this window.</b></div><div>The porter reads its options like BlueStar's “Configure”, finds which racer it replaces,<br>and lets you put it on AI Skin 1, 2 or 3.</div></div>
+
+    <div id="work" class="hidden">
+      <div class="card">
+        <div class="hero">
+          <div class="img" id="hImg"></div>
+          <div>
+            <h3 id="hName"></h3>
+            <div class="muted" id="hMeta"></div>
+            <div class="desc" id="hDesc"></div>
+          </div>
+        </div>
+        <div id="conflict" class="conflict hidden" style="margin:14px 0 0"></div>
+      </div>
+
+      <div class="card" id="cfgCard">
+        <h2><span class="n">1</span> Options <span class="muted" id="cfgSub" style="font-weight:400;font-size:12.5px"></span></h2>
+        <div class="cfgbox"><div class="cfgtabs" id="cfgTabs"></div><div class="cfgopts" id="cfgOpts"></div></div>
+      </div>
+
+      <div class="card hidden" id="nameCard">
+        <h2><span class="n" id="nN">2</span> Name in game</h2>
+        <div class="row"><label>Name</label><input type="text" id="gameName" maxlength="40" placeholder="e.g. Lanolin"></div>
+        <div class="muted" id="nameNote" style="margin-top:6px"></div>
+      </div>
+
+      <div class="card" id="tgtCard">
+        <h2><span class="n" id="n2">2</span> Put it on</h2>
+        <div class="arrowrow" id="arrowRow"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n" id="n3">3</span> Result</h2>
+        <div id="srcBox"></div>
+      </div>
+
+      <div class="card" id="outCard">
+        <h2><span class="n" id="n4">4</span> Move it</h2>
+        <div class="seg hidden"><button id="mOption">Copy: option in this mod</button><button id="mMove" class="on">Move to this slot</button><button id="mSeparate">Copy: separate mod</button></div>
+        <div id="optHelp" class="muted" style="margin-bottom:6px">Adds a new <b style="color:var(--text)">“Extra Slots”</b> group to this mod's Configure in BlueStar. The mod still works like before, and you choose the extra slot there. A backup <code>mod.ini.bak</code> is kept.</div>
+        <div id="sepHelp" class="muted hidden" style="margin-bottom:6px">Creates a brand new mod next to the others in your Mods folder. The original keeps its slot too.</div>
+        <div id="moveHelp" class="muted hidden" style="margin-bottom:6px">Makes a new mod on the new slot and <b style="color:var(--text)">turns the original mod off</b> in BlueStar, so the old slot goes back to normal. Turn the original back on any time to undo.<br>Want two versions of the same mod on two slots? Copy-paste the mod folder first, then move the copy.</div>
+        <div class="row"><label id="nameLbl">Option name</label><input type="text" id="outName"></div>
+        <label class="chk hidden"><input type="checkbox" id="copyIcons" checked> Copy the mod's select-screen icons to that slot <span class="muted" id="iconNote"></span></label>
+        <div style="margin-top:14px"><button class="primary big" id="btnPort" disabled>Port</button></div>
+        <div id="log" class="hidden"></div>
+        <div id="result"></div>
+      </div>
+
+      <div class="card" id="copiesCard">
+        <h2>Copies already in this mod</h2>
+        <div class="copies" id="copies"></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="cssView" class="hidden">
+  <div id="cssNote" class="hidden"></div>
+  <iframe id="cssFrame" src="css/index.html"></iframe>
+</div>
+
+<dialog id="dlgSettings">
+  <h3>Settings</h3>
+  <div class="row"><label>Game folder</label><input type="text" id="sGame" placeholder="…\steamapps\common\SonicRacingCrossWorlds"><button id="bGame">Browse</button></div>
+  <div class="row"><label>Mods folder</label><input type="text" id="sMods" placeholder="…\BlueStarManager\Mods"><button id="bMods">Browse</button></div>
+  <div class="note">Found automatically most of the time. True CSSE or Separate, Ai Skins! is picked from the mods you have on in BlueStar.</div>
+  <label class="row" style="gap:8px;margin-top:14px;cursor:pointer"><input type="checkbox" id="sShowAllMods" style="width:auto;flex:none"> Show mods that aren't skins in the list</label>
+  <label class="row" style="gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="sShow23" style="width:auto;flex:none"> Show AI Skin 2 &amp; 3 in "Put it on"</label>
+  <div class="row" style="justify-content:flex-end;margin-top:16px"><button id="sCancel">Cancel</button><button class="primary" id="sSave">Save</button></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const COLORS = { red:'#ff4d4d', blue:'#3d7bff', green:'#2fcf6b', pink:'#ff6fcf', yellow:'#ffd23f', violet:'#a66bff', purple:'#a66bff', turquoise:'#2fd8d0', orange:'#ff9a2f', white:'#f2f2f2', black:'#333', silver:'#c8d0dc', gold:'#e6b422', cyan:'#2fd8f0', navy:'#3b55c9', lime:'#9be22f', brown:'#a0673b', grey:'#9aa3b5', gray:'#9aa3b5' };
+const S = { mods: [], mod: null, sel: {}, tab: null, inspect: null, src: 0, tgt: null, mode: 'move', busy: false, thumbs: {}, showAll: false };
+
+async function init() {
+  const env = await api.env();
+  showEnv(env);
+  checkSetup();
+  try { await loadMods(); } catch (e) { console.error(e); }
+  checkCombo();
+  checkVoices();
+  api.onProgress((m) => { if (m.type === 'log') logLine(m.msg); else if (m.type === 'status') setStatus(m.msg); });
+  api.onOpenPath((p) => openPath(p));
+}
+function showEnvQuiet(env) { if (env && env.ok) showEnv(env); }
+function showEnv(env) {
+  $('pGame').className = 'pill ' + (env.ok ? 'ok' : 'bad');
+  $('pGame').textContent = env.ok ? '✓ Game found' : '✗ Game not found';
+  const tablesOk = env.ok && !!env.tables;
+  $('pCsse').className = 'pill ' + (tablesOk ? 'ok' : 'bad');
+  $('pCsse').textContent = !env.ok ? '✗ ' + (env.error || 'Setup needed').slice(0, 60)
+    : env.tables === 'combo' ? '✓ Separate AI Skins + CSSE icons' : env.tables === 'separate' ? '✓ Separate AI Skins' : env.tables ? '✓ True CSSE' : '✗ No True CSSE / Separate AI Skins';
+  $('pCsse').title = !env.ok ? env.error || '' : !env.tables ? 'Turn on True CSSE or Separate, Ai Skins! in BlueStar: AI Skin 1-3 only get their own slots with one of them.'
+    : env.tables === 'combo' ? 'Your AI skins have their own icons (True CSSE) and their own names and animations (Separate AI Skins).'
+    : env.tablesBoth ? `True CSSE and Separate AI Skins are both on. They replace the same racer list, so the game only uses the one higher in BlueStar: ${env.tables === 'separate' ? 'Separate AI Skins' : 'True CSSE'}.` : '';
+  if (!env.ok) setTimeout(openSettings, 300);
+}
+
+async function loadMods() {
+  S.mods = await api.listMods();
+  renderMods();
+  renderConflict();
+}
+const normDir = (d) => String(d || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+function renderConflict() {
+  const box = $('conflict');
+  const lm = S.mod && S.mods.find((x) => normDir(x.dir) === normDir(S.mod.dir));
+  const cs = (lm && lm.conflicts) || [];
+  const vs = (lm && lm.voiceNotes) || [];
+  const parts = [];
+  if (cs.length) parts.push(`${cs.map((c) => `<b>${esc(c.with.join(', '))}</b> also replace${c.with.length > 1 ? '' : 's'} <b>${esc(c.slot)}</b>.`).join('<br>')}<br>Both are on in BlueStar, so only one shows in game (the one higher in BlueStar's list). Port one of them to another slot below to use both.`);
+  for (const v of vs) parts.push(voiceText(v));
+  box.classList.toggle('hidden', !parts.length);
+  box.innerHTML = parts.length ? `<span style="font-size:18px;line-height:1">⚠</span><div>${parts.join('<br><br>')}</div>` : '';
+}
+// the game uses one voice per character (all of AI Amy's skins share one), not one per skin
+function voiceText(v) {
+  if (v.kind === 'own') return `<b>${esc(v.who)}</b> has its own voice (separate voices).`;
+  if (v.kind === 'clash') return `<b>${esc(v.with.join(', '))}</b> also bring${v.with.length > 1 ? '' : 's'} a voice for <b>${esc(v.who)}</b>. Only one can play: ${v.wins ? 'this one' : `<b>${esc(v.winner)}</b>'s`} (for voices, the one <b>lower</b> in BlueStar's list wins).`;
+  return `All <b>${esc(v.who)}</b> skins share one voice in game. This skin has none of its own, so it talks with <b>${esc(v.winner)}</b>'s voice.`;
+}
+function voiceLine(m) {
+  const v = (m.voiceNotes || [])[0];
+  if (!v) return '';
+  const tip = (m.voiceNotes || []).map((x) => voiceText(x).replace(/<[^>]+>/g, '')).join('\n');
+  if (v.kind === 'own') return `<div class="voiceline" title="${esc(tip)}">🔊 Own voice</div>`;
+  if (v.kind === 'clash') return `<div class="warnline" title="${esc(tip)}">⚠ Voice clash with ${esc(v.with[0])}${v.with.length > 1 ? ' +' : ''}</div>`;
+  return `<div class="voiceline" title="${esc(tip)}">🔊 Talks with ${esc(v.winner)}'s voice</div>`;
+}
+function renderMods() {
+  const q = $('q').value.toLowerCase();
+  const ul = $('mods'); ul.innerHTML = '';
+  const visible = S.mods.filter((m) => S.showAllMods || m.skin !== false);
+  const nHidden = S.mods.length - visible.length;
+  const match = visible.filter((m) => !q || (m.name + ' ' + m.author).toLowerCase().includes(q));
+  // mods turned off in BlueStar stay out of the way: hidden, or listed at the bottom when asked
+  const on = match.filter((m) => m.enabled), off = match.filter((m) => !m.enabled);
+  const showOff = (() => { try { return localStorage.getItem('showOffMods') === '1'; } catch { return false; } })();
+  const addOffToggle = () => {
+    if (!off.length) return;
+    const li = document.createElement('li');
+    li.className = 'offToggle';
+    li.innerHTML = showOff ? `▾ Hide mods turned off in BlueStar` : `▸ ${off.length} mod${off.length > 1 ? 's' : ''} turned off in BlueStar — show`;
+    li.onclick = () => { try { localStorage.setItem('showOffMods', showOff ? '' : '1'); } catch {} renderMods(); };
+    ul.appendChild(li);
+  };
+  const shown = showOff ? [...on, null, ...off] : [...on, null];
+  for (const m of shown) {
+    if (m === null) { addOffToggle(); continue; }
+    const li = document.createElement('li');
+    if (S.mod && S.mod.dir === m.dir) li.className = 'sel';
+    const warn = (m.conflicts || []).map((c) => `Same slot as ${c.with.join(', ')} — ${c.slot}`).join('\n');
+    if (!m.enabled) li.classList.add('isoff');
+    li.innerHTML = `<div class="th"></div><div style="min-width:0"><div class="nm"><span class="t" title="${esc(m.name)}">${esc(m.name)}</span>${m.porter ? `<span class="tag port">+${m.porter}</span>` : ''}${m.hasConfig ? '<span class="tag cfg">options</span>' : ''}${m.enabled ? '' : '<span class="tag off">off</span>'}</div><div class="au">${esc(m.author || '')}${m.version ? ' · v' + esc(m.version) : ''}</div>${warn ? `<div class="warnline" title="${esc(warn)}">⚠ Same slot as ${esc(m.conflicts[0].with[0])}${m.conflicts.length > 1 || m.conflicts[0].with.length > 1 ? ' +' : ''}</div>` : ''}${m.enabled ? voiceLine(m) : ''}</div>`;
+    li.onclick = () => openPath(m.dir);
+    ul.appendChild(li);
+    const th = li.querySelector('.th');
+    if (m.thumb) {
+      if (S.thumbs[m.thumb]) th.style.backgroundImage = `url(${S.thumbs[m.thumb]})`;
+      else api.thumb(m.thumb).then((d) => { if (d) { S.thumbs[m.thumb] = d; th.style.backgroundImage = `url(${d})`; } });
+    }
+  }
+  if (!on.length && !(showOff && off.length)) ul.insertAdjacentHTML('afterbegin', `<li style="cursor:default;color:var(--muted);display:block">${visible.length ? (off.length && !q ? 'No skin mods turned on.' : 'No match.') : S.mods.length ? 'No skin mods found.' : 'No mods found. Check Settings.'}</li>`);
+}
+
+function setStatus(t) {
+  $('status').textContent = t || '';
+  $('statusWrap').classList.toggle('hidden', !t);
+}
+async function openPath(p) {
+  if (S.busy) return;
+  if (S.tab2 === 'css') setTab('port');
+  if (/\.(zip|rar|7z)$/i.test(p)) setStatus('Extracting into your Mods folder…');
+  const m = await api.openMod(p);
+  setStatus('');
+  if (/\.(zip|rar|7z)$/i.test(p) && !m.error) loadMods();
+  if (m.error) { alert(m.error); return; }
+  S.mod = m; S.sel = { ...m.selection }; S.inspect = null; S.src = 0; S.tgt = null;
+  S.autoTry = m.configs.some((c) => c.synthetic) ? [] : null;
+  $('empty').classList.add('hidden'); $('work').classList.remove('hidden');
+  $('hImg').style.backgroundImage = m.thumbData ? `url(${m.thumbData})` : '';
+  $('hName').textContent = m.name;
+  $('hMeta').textContent = [m.author && 'by ' + m.author, m.version && 'v' + m.version].filter(Boolean).join(' · ');
+  $('hDesc').textContent = m.description || '';
+  renderConflict();
+  $('result').innerHTML = ''; $('log').classList.add('hidden');
+  const groups = m.configs.filter((c) => c.name !== 'Extra Slots');
+  $('cfgCard').classList.toggle('hidden', !groups.length);
+  $('cfgSub').textContent = groups.some((g) => g.synthetic) ? '— this mod comes in several folders; pick the one to port.' : "— same as BlueStar's Configure. Pre-set to what you picked there.";
+  ['nN', 'n2', 'n3', 'n4'].forEach((id, i) => ($(id).textContent = groups.length ? i + 2 : i + 1));
+  S.tab = groups[0] ? groups[0].name : null;
+  renderCfg(); renderCopies(); renderMods();
+  inspect();
+}
+
+function renderCfg() {
+  const groups = S.mod.configs.filter((c) => c.name !== 'Extra Slots');
+  $('cfgTabs').innerHTML = groups.map((g) => `<button class="${g.name === S.tab ? 'on' : ''}" data-g="${esc(g.name)}">${esc(g.name)}<small>${esc(S.sel[g.name] || '')}</small></button>`).join('');
+  $('cfgTabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { S.tab = b.dataset.g; renderCfg(); }));
+  const g = groups.find((x) => x.name === S.tab);
+  if (!g) { $('cfgOpts').innerHTML = ''; return; }
+  $('cfgOpts').innerHTML = `<div class="d">${esc(g.description)}</div><h4>${esc(g.name)}</h4>` +
+    g.options.map((o) => `<label><input type="radio" name="opt" value="${esc(o)}" ${S.sel[g.name] === o ? 'checked' : ''}> ${esc(o)}</label>`).join('');
+  $('cfgOpts').querySelectorAll('input').forEach((r) => (r.onchange = () => { S.sel[g.name] = r.value; renderCfg(); inspectSoon(); }));
+}
+
+let inspTimer = null;
+function inspectSoon() { clearTimeout(inspTimer); inspTimer = setTimeout(inspect, 350); }
+async function inspect() {
+  const myMod = S.mod;
+  $('srcBox').innerHTML = '<span class="spin"></span><span class="muted">Reading the mod…</span>';
+  $('tiles').innerHTML = ''; $('arrowRow').innerHTML = ''; $('btnPort').disabled = true;
+  const r = await api.inspect(myMod.dir, S.sel);
+  if (S.mod !== myMod) return;
+  if (r.error || !r.sources || !r.sources.length) {
+    // a mod that comes in several folders (stamps, HUD, model…): on first open, jump to a folder that has the racer model
+    const syn = myMod.configs.find((c) => c.synthetic);
+    if (S.autoTry && syn) {
+      S.autoTry.push(S.sel[syn.name]);
+      const next = syn.options.find((o) => !S.autoTry.includes(o));
+      if (next) { S.sel[syn.name] = next; renderCfg(); return inspect(); }
+      S.sel[syn.name] = S.autoTry[0];
+      S.autoTry = null;
+      renderCfg();
+    }
+    S.inspect = null;
+    // don't keep the previous mod's name in the box
+    if ($('gameName').dataset.mod !== myMod.dir) { $('gameName').value = ''; delete $('gameName').dataset.edited; $('gameName').dataset.mod = myMod.dir; }
+    $('srcBox').innerHTML = `<div class="result err"><b>Can't port this one.</b><div class="muted">${esc(r.error || "These files don't replace a racer model or skin.")}</div></div>`;
+    return;
+  }
+  S.inspect = r;
+  S.autoTry = null;
+  if (S.src >= r.sources.length) S.src = 0;
+  // name in game: start from the mod's own name for the racer, or the racer's normal name
+  S.defaultName = r.gameName || r.sources[S.src].racer;
+  if (!$('gameName').dataset.edited || $('gameName').dataset.mod !== myMod.dir) {
+    $('gameName').value = S.defaultName; delete $('gameName').dataset.edited; $('gameName').dataset.mod = myMod.dir;
+  }
+  $('nameCard').classList.toggle('hidden', !r.sources[S.src].name_key);
+  renderSources();
+}
+function iconHtml(src, cls = 'tile') {
+  return `<div class="${cls}">${src ? `<div class="im" style="background-image:url(${src})"></div>` : '<div class="noimg">?</div>'}</div>`;
+}
+function colorDot(c) { return c ? `<span class="dot" style="background:${COLORS[c] || '#999'}"></span>` : ''; }
+function renderSources() {
+  renderResult();
+  renderTargets();
+}
+// Result: the mod's icon, the name it will have in game and the slot it will be on
+function renderResult() {
+  const r = S.inspect;
+  if (!r) return;
+  $('srcBox').innerHTML = `<div class="srcrow">${r.sources.map((s, i) => {
+    const t = i === S.src && S.tgt != null ? s.targets[S.tgt] : null;
+    const name = i === S.src ? ($('gameName').value.trim() || s.racer) : s.racer;
+    const sub = i !== S.src ? `${colorDot(s.color)}${esc(s.label)}`
+      : t ? `${esc(s.racer)} · ${colorDot(t.color)}${esc(t.label)}` : 'pick a slot above';
+    return `<div class="src ${i === S.src ? 'on' : ''}" data-i="${i}">
+      ${iconHtml($('copyIcons').checked && s.mod_has_icon ? s.icon : (t ? t.icon : s.icon), 'tile sm')}
+      <div><b>${esc(name)}</b><span class="muted">${sub}</span></div>
+    </div>`;
+  }).join('')}</div>${r.sources[S.src] && !r.sources[S.src].mod_has_icon ? '<div class="muted" style="margin-top:8px">This mod has no icon of its own, so the slot keeps its normal icon.</div>' : ''}`;
+  $('srcBox').querySelectorAll('.src').forEach((d) => (d.onclick = () => { if (S.src === +d.dataset.i) return; S.src = +d.dataset.i; S.tgt = null; renderSources(); }));
+}
+function renderTargets() {
+  const s = S.inspect.sources[S.src];
+  const t = s.targets[S.tgt];
+  // both sides show the slots as the game has them: from the mod's slot to the one picked below
+  $('arrowRow').innerHTML = `<div class="tilewrap" style="cursor:default">${iconHtml(s.game_icon || s.icon)}<div class="lbl"><span class="muted">From</span> ${esc(s.racer)} · ${esc(s.label)}</div></div><div class="arrow">➜</div>` +
+    (t ? `<div class="tilewrap" style="cursor:default">${iconHtml(t.icon)}<div class="lbl"><span class="muted">To</span> ${colorDot(t.color)}${esc(t.label)}</div></div>` : '<div class="muted">pick a slot below</div>');
+  const hidden = (t) => !S.showAll && /^AI Skin [23]\b/.test(t.label);
+  $('tiles').innerHTML = s.targets.map((t, j) => (hidden(t) && j !== S.tgt) ? '' : `<div class="tilewrap ${j === S.tgt ? 'on' : ''}" data-j="${j}">${iconHtml(t.icon)}<div class="lbl">${colorDot(t.color)}${esc(t.label)}</div></div>`).join('');
+
+  $('tiles').querySelectorAll('.tilewrap').forEach((d) => (d.onclick = () => { S.tgt = +d.dataset.j; renderTargets(); renderResult(); }));
+  $('nameNote').innerHTML = !t ? 'Pick a slot in step 4. Leave it as it is to keep the mod\'s name.'
+    : (t.name_key || '').startsWith('table:') ? `This slot has its own name (from Separate, Ai Skins!), so only ${esc(t.label)} is renamed.`
+    : /^AI Skin/.test(t.label) && s.targets.some((x) => (x.name_key || '').startsWith('table:')) ? `Only ${esc(t.label)} uses this name (AI Skin 1, 2 and 3 have their own).`
+    : /^AI Skin/.test(t.label) ? `In the game, all of ${esc(s.racer)}'s AI skins (AI Skin, AI Skin 1, 2 and 3) share one name, so this renames all of them.`
+    : `Shown on the select screen for ${esc(s.racer)} · ${esc(t.label)}.`;
+  $('iconNote').textContent = s.mod_has_icon ? '' : '(this mod has no icon for its slot — the game icon stays)';
+  $('copyIcons').disabled = !s.mod_has_icon;
+  updateOut();
+}
+function variantName() {
+  const groups = S.mod.configs.filter((c) => c.name !== 'Extra Slots' && (c.synthetic || (/model|main replacement|replacement|skin|version|color|colour|outfit/i.test(c.name) && !/ui|map|stamp|emote|voice|audio|minimap|render/i.test(c.name))));
+  return groups.map((g) => S.sel[g.name]).filter((v) => v && v !== 'None').join(' ');
+}
+function updateOut() {
+  const s = S.inspect && S.inspect.sources[S.src];
+  const t = s && s.targets[S.tgt];
+  const isOpt = S.mode === 'option';
+  $('mOption').classList.toggle('on', isOpt); $('mSeparate').classList.toggle('on', S.mode === 'separate'); $('mMove').classList.toggle('on', S.mode === 'move');
+  $('optHelp').classList.toggle('hidden', !isOpt); $('sepHelp').classList.toggle('hidden', S.mode !== 'separate'); $('moveHelp').classList.toggle('hidden', S.mode !== 'move');
+  $('nameLbl').textContent = isOpt ? 'Option name' : 'New mod name';
+  if (t && !$('outName').dataset.edited) {
+    const v = variantName();
+    const slot = t.label.replace(' (', ' - ').replace(')', '');
+    $('outName').value = isOpt ? (slot + (v ? ' - ' + v : '')) : `${S.mod.name}${v ? ' ' + v : ''} (${slot})`;
+  }
+  $('btnPort').disabled = !t || S.busy;
+  $('btnPort').textContent = t ? `Move to ${t.label}` : 'Pick a slot first';
+}
+$('outName').oninput = () => ($('outName').dataset.edited = '1');
+$('gameName').oninput = () => { $('gameName').dataset.edited = '1'; renderResult(); };
+$('mOption').onclick = () => { S.mode = 'option'; delete $('outName').dataset.edited; updateOut(); };
+$('mSeparate').onclick = () => { S.mode = 'separate'; delete $('outName').dataset.edited; updateOut(); };
+$('mMove').onclick = () => { S.mode = 'move'; delete $('outName').dataset.edited; updateOut(); };
+$('copyIcons').onchange = () => { if (S.inspect) { renderTargets(); renderResult(); } };
+
+function logLine(t) { const l = $('log'); l.classList.remove('hidden'); l.insertAdjacentHTML('beforeend', `<div>› ${esc(t)}</div>`); l.scrollTop = l.scrollHeight; }
+$('btnPort').onclick = async () => {
+  const s = S.inspect.sources[S.src], t = s.targets[S.tgt];
+  let name = $('outName').value.trim().replace(/,/g, ' ');
+  if (!name) return;
+  if (S.mode === 'option' && S.mod.porter.some((p) => p.label === name)) {
+    if (!confirm(`“${name}” already exists in this mod. Replace it?`)) return;
+    await api.removeOption(S.mod.dir, name);
+  }
+  S.busy = true; updateOut();
+  $('log').innerHTML = ''; $('result').innerHTML = '';
+  $('btnPort').innerHTML = '<span class="spin"></span>Moving…';
+  logLine(`${s.racer} · ${s.label}  →  ${t.label}`);
+  const safe = (S.mod.name + ' ' + variantName()).trim();
+  const r = await api.port({ dir: S.mod.dir, selection: S.sel, src: S.src, tgt: S.tgt, mode: S.mode, optionLabel: name, outName: name, containerName: safe, copyIcons: $('copyIcons').checked, srcLabel: s.label, tgtLabel: t.label, tgtMesh: t.mesh,
+    gameName: $('gameName').value, defaultName: S.defaultName, srcNameKey: s.name_key, tgtNameKey: t.name_key });
+  S.busy = false;
+  if (r.error) {
+    $('result').innerHTML = `<div class="result err"><h4>Something went wrong</h4><div>${esc(r.error)}</div></div>`;
+  } else {
+    const kept = r.copied.filter((c) => c.from === c.to).length;
+    const how = S.mode === 'option'
+      ? `Open <b>BlueStar Manager</b> → <b>${esc(S.mod.name)}</b> → <b>Configure</b> → <b>Extra Slots</b> and pick <b>“${esc(name)}”</b>. Keep this mod <b>above True CSSE / Separate AI Skins</b>.<div class="note">If the new option doesn't show up, restart BlueStar Manager so it re-reads mod.ini.</div>`
+      : S.mode === 'move'
+        ? (r.moved ? `<b>“${esc(r.out_name)}”</b> is on in BlueStar in the original's place, and <b>${esc(S.mod.name)}</b> is turned off. Restart BlueStar if it's open, then launch the game.`
+                   : `Open <b>BlueStar Manager</b>, turn <b>${esc(S.mod.name)}</b> off, tick <b>“${esc(r.out_name)}”</b> and drag it <b>above True CSSE / Separate AI Skins</b>.`)
+        : `Open <b>BlueStar Manager</b>, tick <b>“${esc(r.out_name)}”</b> and drag it <b>above True CSSE / Separate AI Skins</b>.`;
+    $('result').innerHTML = `<div class="result ok"><h4>✓ Done — ${esc(S.mod.name)} is now ${S.mode === 'move' ? 'moved to' : 'on'} ${esc(s.racer)} · ${esc(t.label)}</h4><div>${how}</div>
+      <div class="note">${r.copied.length} files copied${kept ? ` (${kept} custom files like skeletons or shaders kept as-is)` : ''}${r.had_icons ? ', icons included' : ''}${r.slotVoice ? ', own voice for this slot' : r.voice ? ', voice included' : ''}${r.renamed ? ', name included' : ''}.</div>
+      <div style="margin-top:10px"><button id="btnShow">Show in folder</button></div></div>`;
+    if (r.slotVoice) $('result').querySelector('.note').insertAdjacentHTML('afterend', '<div class="note">🔊 This slot now has its own voice. Restart the game if it\'s running.</div>');
+    $('btnShow').onclick = () => api.show(r.out_dir);
+    const m = await api.openMod(S.mod.dir);
+    if (!m.error) { S.mod.porter = m.porter; S.mod.configs = m.configs; S.mod.files = m.files; renderCopies(); }
+    loadMods();
+  }
+  updateOut();
+};
+
+function renderCopies() {
+  const list = S.mod.porter || [];
+  $('copiesCard').classList.toggle('hidden', !list.length);
+  $('copies').innerHTML = list.map((p) => `<div class="c"><span>🎯 ${esc(p.label)}</span><button class="small danger" data-l="${esc(p.label)}">Remove</button></div>`).join('');
+  $('copies').querySelectorAll('button').forEach((b) => (b.onclick = async () => {
+    if (!confirm(`Remove “${b.dataset.l}” from ${S.mod.name}?`)) return;
+    await api.removeOption(S.mod.dir, b.dataset.l);
+    const m = await api.openMod(S.mod.dir);
+    if (!m.error) { S.mod.porter = m.porter; S.mod.configs = m.configs; renderCopies(); loadMods(); }
+  }));
+}
+
+// drag & drop anywhere
+let dragDepth = 0;
+window.addEventListener('dragenter', (e) => { e.preventDefault(); dragDepth++; document.body.classList.add('dragover'); });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragover'); } });
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) openPath(api.pathForFile(f));
+});
+$('q').oninput = renderMods;
+$('btnRefresh').onclick = loadMods;
+
+async function openSettings() {
+  const s = await api.getSettings();
+  const env = await api.env();
+  $('sGame').value = s.gameDir || env.gameDir || '';
+  $('sMods').value = s.modsDir || env.modsDir || '';
+  $('sShow23').checked = s.showAi23 === true;
+  $('sShowAllMods').checked = s.showAllMods === true;
+  $('dlgSettings').showModal();
+}
+$('btnSettings').onclick = openSettings;
+$('bGame').onclick = async () => { const p = await api.pickFolder('Your SonicRacingCrossWorlds game folder'); if (p) $('sGame').value = p; };
+$('bMods').onclick = async () => { const p = await api.pickFolder('Your BlueStar Manager Mods folder'); if (p) $('sMods').value = p; };
+$('sCancel').onclick = () => $('dlgSettings').close();
+$('sSave').onclick = async () => {
+  const env = await api.setSettings({ gameDir: $('sGame').value.trim(), modsDir: $('sMods').value.trim(), showAi23: $('sShow23').checked, showAllMods: $('sShowAllMods').checked });
+  S.showAllMods = $('sShowAllMods').checked;
+  S.showAll = $('sShow23').checked;
+  $('dlgSettings').close(); showEnv(env); loadMods(); checkSetup();
+  if (S.inspect) renderTargets();
+};
+
+api.getSettings().then((s) => { S.showAll = !!(s && s.showAi23 === true); S.showAllMods = !!(s && s.showAllMods === true); renderMods(); if (S.inspect) renderTargets(); });
+// ---- CSS order tab
+S.tab2 = 'port';
+function setTab(t) {
+  S.tab2 = t;
+  $('tabPort').classList.toggle('on', t === 'port'); $('tabCss').classList.toggle('on', t === 'css');
+  document.querySelector('.layout').classList.toggle('hidden', t !== 'port');
+  $('cssView').classList.toggle('hidden', t !== 'css');
+  $('tagline').textContent = t === 'port' ? '' : 'Order the character select screen. Racers your mods replace show the mod\'s own icon.';
+  if (t === 'css') sendCssIcons();
+}
+$('tabPort').onclick = () => setTab('port');
+$('tabCss').onclick = () => setTab('css');
+async function sendCssIcons() {
+  const r = await api.cssIcons();
+  const n = Object.keys(r.icons || {}).length;
+  const names = [...new Set(Object.values(r.icons || {}).map((v) => v.mod))];
+  // only shown when something went wrong reading the mods
+  const note = r.csseWarn || (r.error ? `Couldn't read your mods' icons: ${r.error}` : '');
+  $('cssNote').textContent = note;
+  $('cssNote').classList.toggle('hidden', !note);
+  $('cssNote').style.color = r.csseWarn ? '#ffcc33' : '';
+  $('cssFrame').contentWindow.postMessage({ type: 'modIcons', icons: r.icons || {}, nineCol: !!r.nineCol }, '*');
+}
+$('cssFrame').addEventListener('load', () => { if (S.tab2 === 'css') sendCssIcons(); });
+window.addEventListener('message', async (e) => {
+  const d = e.data || {};
+  if (d.type !== 'cssInstall') return;
+  const r = await api.cssInstall(d.buf);
+  const msg = r.error ? 'Save failed: ' + r.error
+    : r.listed ? 'Saved! “Custom CSS” is on and at the top of your BlueStar list. If BlueStar is open, restart it, then launch the game.'
+    : 'Saved as “Custom CSS” in your Mods folder. Turn it on in BlueStar and move it to the top.';
+  $('cssFrame').contentWindow.postMessage({ type: 'status', msg }, '*');
+});
+
+// pick up changes made in BlueStar (mods turned on/off, options) when coming back to this window
+let lastFocus = 0;
+
+// ---- one-click "Separate AI Skins + CSSE Icons"
+const COMBO_TXT = {
+  missing: ['<b>True CSSE and Separate AI Skins are both on.</b> Make them work together: every AI skin gets its own icon <i>and</i> keeps its own name and animations.', 'Set it up'],
+  disabled: ['<b>“Separate AI Skins + CSSE Icons” is off.</b> Turn it back on so your AI skins keep their own icons, names and animations.', 'Turn it on'],
+  stale: ['<b>True CSSE or Separate AI Skins was updated.</b> Update “Separate AI Skins + CSSE Icons” so it matches.', 'Update'],
+};
+let comboBusy = false;
+async function checkCombo() {
+  if (comboBusy) return;
+  const st = await api.comboStatus().catch(() => ({ state: 'off' }));
+  const bar = $('comboBar');
+  if (bar.classList.contains('done') || bar.classList.contains('err')) return; // keep the last result visible until closed
+  const t = COMBO_TXT[st.state];
+  bar.classList.toggle('hidden', !t);
+  if (!t) return;
+  $('comboText').innerHTML = t[0];
+  $('comboBtn').textContent = t[1];
+  $('comboBtn').disabled = false;
+}
+$('comboBtn').onclick = async () => {
+  const bar = $('comboBar');
+  if (bar.classList.contains('done') || bar.classList.contains('err')) { bar.classList.remove('done', 'err'); bar.classList.add('hidden'); checkCombo(); return; }
+  comboBusy = true;
+  $('comboBtn').disabled = true;
+  $('comboText').innerHTML = '<span class="spin"></span> Building it from your True CSSE and Separate AI Skins…';
+  const r = await api.comboBuild().catch((e) => ({ error: String(e) }));
+  comboBusy = false;
+  $('comboBtn').disabled = false;
+  if (r.error) {
+    bar.classList.add('err');
+    $('comboText').innerHTML = `<b>Couldn't set it up:</b> ${esc(r.error)}`;
+  } else {
+    bar.classList.add('done');
+    $('comboText').innerHTML = '<b>Done!</b> “Separate AI Skins + CSSE Icons” is on, at the top of BlueStar.' +
+      (r.css === 'kept' ? ' Your custom CSS order was kept.' : r.css === 'failed' ? ' Your custom CSS order couldn\'t be moved over: press Save in the CSS order tab once.' : '') +
+      (r.listed ? ' If BlueStar is open, restart it so it shows the change.' : ' Turn it on in BlueStar and put it at the top.');
+  }
+  $('comboBtn').textContent = 'OK';
+  api.env(true).then(showEnvQuiet);
+  loadMods();
+};
+// ---- Separate AI voices (UE4SS)
+let voiceSt = null, voiceBusy = false;
+async function checkVoices() {
+  const st = await api.voicesStatus().catch(() => null);
+  if (!st) return;
+  voiceSt = st;
+  const b = $('pVoice');
+  b.className = 'pill' + (st.on ? ' ok' : '');
+  b.textContent = st.on ? `🔊 Separate voices${st.slots.length ? ` (${st.slots.length})` : ''}` : '🔊 Shared voices';
+  b.title = st.on ? 'AI skins with their own voice speak with it when you pick them. Click to turn this off.'
+    : 'All AI skins of a character share one voice. Click to give AI skins their own voices (installs UE4SS).';
+}
+function voiceBar(html, btn, cancel) {
+  $('voiceBar').classList.remove('hidden', 'done', 'err');
+  $('voiceText').innerHTML = html;
+  $('voiceBtn').textContent = btn;
+  $('voiceNo').classList.toggle('hidden', !cancel);
+}
+$('pVoice').onclick = () => {
+  if (voiceBusy || !voiceSt) return;
+  if (!voiceSt.on) voiceBar('<b>Give AI skins their own voices?</b> This installs <b>UE4SS</b> (a mod loader) &amp; a small script into the game folder. After that, each AI Skin 1-3 slot gets its own voice. <b>Close the game first.</b>', 'Install', true);
+  else voiceBar('<b>Turn separate voices off?</b> AI skins go back to sharing one voice per character. UE4SS stays installed (other mods may use it).', 'Turn off', true);
+  $('voiceBar').dataset.act = voiceSt.on ? 'off' : 'on';
+};
+$('voiceNo').onclick = () => $('voiceBar').classList.add('hidden');
+$('voiceBtn').onclick = async () => {
+  const bar = $('voiceBar');
+  if (bar.classList.contains('done') || bar.classList.contains('err')) { bar.classList.add('hidden'); return; }
+  const on = bar.dataset.act === 'on';
+  voiceBusy = true; $('voiceBtn').disabled = true; $('voiceNo').classList.add('hidden');
+  $('voiceText').innerHTML = '<span class="spin"></span> ' + (on ? 'Installing…' : 'Turning off…');
+  const r = await api.voicesSet(on).catch((e) => ({ error: String(e) }));
+  voiceBusy = false; $('voiceBtn').disabled = false;
+  if (r.error) { bar.classList.add('err'); $('voiceText').innerHTML = `<b>Couldn't do it:</b> ${esc(r.error)}`; }
+  else {
+    bar.classList.add('done');
+    $('voiceText').innerHTML = on
+      ? '<b>Separate voices are on.</b> Now move a skin that has a voice onto <b>AI Skin 1-3</b> and it gets its own voice. Start the game normally (UE4SS loads by itself).'
+      : '<b>Separate voices are off.</b> AI skins share one voice per character again.';
+  }
+  $('voiceBtn').textContent = 'OK';
+  checkVoices(); loadMods();
+};
+
+// ---- First-run setup: the three starter mods (mandatory), then the patch mod, then separate voices (optional)
+let setupBusy = false, comboLater = false;
+const SETUP_STEPS = ['Dependencies', 'Patch Mod', 'Voices'];
+function setupHead(step) {
+  return `<div class="sthead"><div class="stt">Let's get you set up</div><div class="stdots">${SETUP_STEPS.map((n, i) => `<span class="${i < step ? 'done' : i === step ? 'on' : ''}"><b>${i < step ? '✓' : i + 1}</b>${n}</span>`).join('')}</div></div>`;
+}
+async function checkSetup() {
+  if (setupBusy) return;
+  const st = await api.setupStatus().catch((e) => ({ error: String(e) }));
+  const box = $('setup'), card = $('setupCard');
+  let html = null;
+  if (st.error) {
+    html = setupHead(0) + `<h3>Folders not found</h3><p class="lead">${esc(st.error)}</p><div class="stfoot"><span class="muted">Open Settings, fix the folder, then press Save.</span><button id="stSettings">⚙ Settings</button><button id="stRecheck">Check again</button></div>`;
+  } else if (!st.ready) {
+    const lbl = { on: '✓ Installed and on', off: 'Installed, but OFF in BlueStar', missing: 'Not installed' };
+    html = setupHead(0) + `<h3>These 3 mods are needed</h3><p class="lead">This app moves skins between AI slots, and AI slots only exist with these mods. Install each one, turn it on in <b>BlueStar Manager</b>, then come back here.</p>` +
+      st.starters.map((x) => `<div class="strow ${x.state}"><div class="stinfo"><div class="stn">${esc(x.name)} <small>by ${esc(x.by)}</small></div><div class="stw">${esc(x.why)}</div>
+        <div class="sts ${x.state}">${lbl[x.state]}${x.state === 'off' ? ' — tick it in BlueStar' : ''}</div></div>
+        ${x.state === 'on' ? '<div class="stok">✓</div>' : x.state === 'off' ? '<div class="stok" style="color:#f2a900">!</div>' : `<button class="primary" data-url="${esc(x.url)}">Get it on GameBanana</button>`}</div>`).join('') +
+      `<div class="stfoot"><span class="muted">Tip: on GameBanana use <b>1-Click Install</b> to send it straight to BlueStar. This window checks again by itself when you come back.</span><button id="stRecheck">Check again</button></div>`;
+  } else if (['missing', 'disabled', 'stale'].includes(st.combo) && !comboLater) {
+    const t = { missing: 'Install', disabled: 'Turn it on', stale: 'Update it' }[st.combo];
+    html = setupHead(1) + `<h3>Install the patch mod</h3><p class="lead"><b>“Separate AI Skins + CSSE Icons”</b> makes True CSSE and Separate AI Skins work together: every AI skin gets its own icon <i>and</i> keeps its own name and animations. It's built from your own copies of both mods and goes at the top of BlueStar.</p>
+      <div class="stact"><button class="primary big" id="stCombo">${t}</button><button id="stLater" class="small">Later</button></div><div id="stMsg" class="note"></div>`;
+  } else if (!st.voices.on && !st.voicesAsked) {
+    html = setupHead(2) + `<h3>Own voices for AI skins?</h3><p class="lead">In the normal game, every AI skin of a character shares one voice. This installs <b>UE4SS</b> (a mod loader) &amp; a small script into the game folder, so each AI Skin 1-3 slot can have its own voice: when you move a skin that has a voice, that slot keeps it. <b>Close the game first.</b></p>
+      <div class="stact"><button class="primary big" id="stVoice">Install UE4SS</button><button id="stNoVoice" class="small">No thanks</button></div><div class="note">You can change this any time with the 🔊 button at the top.</div><div id="stMsg" class="note"></div>`;
+  }
+  box.classList.toggle('hidden', !html);
+  if (!html) return;
+  card.innerHTML = html;
+  card.querySelectorAll('button[data-url]').forEach((b) => (b.onclick = () => api.openUrl(b.dataset.url)));
+  if ($('stRecheck')) $('stRecheck').onclick = () => { $('stRecheck').disabled = true; checkSetup().then(() => { api.env(true).then(showEnvQuiet); loadMods(); }); };
+  if ($('stSettings')) $('stSettings').onclick = () => $('btnSettings').click();
+  if ($('stLater')) $('stLater').onclick = () => { comboLater = true; checkSetup(); };
+  if ($('stCombo')) $('stCombo').onclick = async () => {
+    setupBusy = true; $('stCombo').disabled = true; $('stMsg').innerHTML = '<span class="spin"></span> Building it from your True CSSE and Separate AI Skins…';
+    const r = await api.comboBuild().catch((e) => ({ error: String(e) }));
+    setupBusy = false;
+    if (r.error) { $('stCombo').disabled = false; $('stMsg').innerHTML = `<b style="color:#ffb3a9">Couldn't do it:</b> ${esc(r.error)}`; return; }
+    api.env(true).then(showEnvQuiet); loadMods(); checkCombo(); checkSetup();
+  };
+  if ($('stNoVoice')) $('stNoVoice').onclick = async () => { await api.setupVoicesAsked(); checkSetup(); };
+  if ($('stVoice')) $('stVoice').onclick = async () => {
+    setupBusy = true; $('stVoice').disabled = true; $('stMsg').innerHTML = '<span class="spin"></span> Installing…';
+    const r = await api.voicesSet(true).catch((e) => ({ error: String(e) }));
+    setupBusy = false;
+    if (r.error) { $('stVoice').disabled = false; $('stMsg').innerHTML = `<b style="color:#ffb3a9">Couldn't do it:</b> ${esc(r.error)}`; return; }
+    await api.setupVoicesAsked(); checkVoices(); loadMods(); checkSetup();
+  };
+}
+window.addEventListener('focus', () => { if (!S.busy && Date.now() - lastFocus > 3000) { lastFocus = Date.now(); api.env().then(showEnvQuiet); checkCombo(); checkVoices(); checkSetup(); loadMods(); if (S.tab2 === 'css') sendCssIcons(); } });
+init();
+</script>
+</body>
+</html>

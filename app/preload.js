@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
+
+contextBridge.exposeInMainWorld('api', {
+  env: (force) => ipcRenderer.invoke('env', force),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (s) => ipcRenderer.invoke('settings:set', s),
+  pickFolder: (title) => ipcRenderer.invoke('pickFolder', title),
+  listMods: () => ipcRenderer.invoke('mods:list'),
+  cssIcons: () => ipcRenderer.invoke('css:icons'),
+  cssInstall: (buf) => ipcRenderer.invoke('css:install', buf),
+  comboStatus: () => ipcRenderer.invoke('combo:status'),
+  comboBuild: () => ipcRenderer.invoke('combo:build'),
+  voicesStatus: () => ipcRenderer.invoke('voices:status'),
+  setupStatus: () => ipcRenderer.invoke('setup:status'),
+  setupVoicesAsked: () => ipcRenderer.invoke('setup:voicesAsked'),
+  openUrl: (u) => ipcRenderer.invoke('openUrl', u),
+  voicesSet: (on) => ipcRenderer.invoke('voices:set', on),
+  thumb: (p) => ipcRenderer.invoke('thumb', p),
+  openMod: (p) => ipcRenderer.invoke('mod:open', p),
+  inspect: (dir, sel) => ipcRenderer.invoke('mod:inspect', dir, sel),
+  port: (req) => ipcRenderer.invoke('mod:port', req),
+  removeOption: (dir, label) => ipcRenderer.invoke('mod:removeOption', dir, label),
+  show: (p) => ipcRenderer.invoke('show', p),
+  pathForFile: (f) => webUtils.getPathForFile(f),
+  onProgress: (cb) => ipcRenderer.on('port:progress', (_e, m) => cb(m)),
+  onOpenPath: (cb) => ipcRenderer.on('open-path', (_e, p) => cb(p)),
+});
