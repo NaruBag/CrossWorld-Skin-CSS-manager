@@ -1,6 +1,15 @@
-# Crossworld Skin & CSS Manager - source code
+# Crossworld Skin & CSS Manager
 
-by SCWS&CSS
+A tool for **Sonic Racing CrossWorlds** that:
+- moves skin mods between slots (Regular, AI Skin, AI Skin 1-3), so you can use more skins at once
+- edits the character select (CSS) order, including locked and DLC characters
+- can give AI Skin 1-3 their own voices (**experimental**, uses UE4SS)
+
+**Download:** see [Releases](../../releases/latest), or the GameBanana / Nexus page.
+Works with BlueStar Manager. Windows only.
+
+---
+
 
 ## What's inside
 
