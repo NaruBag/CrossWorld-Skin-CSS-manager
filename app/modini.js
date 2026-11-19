@@ -255,6 +255,8 @@ function findMods(modsDir) {
     let ents = [];
     try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     if (ents.some((e) => e.isFile() && e.name.toLowerCase() === 'mod.ini')) { if (!seen.has(dir)) { seen.add(dir); res.push(dir); } return; }
+    // like BlueStar: a folder in Mods with mod files but no mod.ini is a mod too (named after the folder)
+    if (depth === 1 && ents.some((e) => e.isFile() && /\.(utoc|pak)(\.disabled)?$/i.test(e.name))) { if (!seen.has(dir)) { seen.add(dir); res.push(dir); } return; }
     for (const e of ents) if (e.isDirectory()) visit(path.join(dir, e.name), depth + 1);
   };
   visit(modsDir, 0);

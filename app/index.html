@@ -394,8 +394,11 @@ async function inspect() {
   S.inspect = r;
   S.autoTry = null;
   if (S.src >= r.sources.length) S.src = 0;
+  // packs: start on a character that has somewhere to go
+  if (!r.sources[S.src].targets.length) { const k = r.sources.findIndex((x) => x.targets.length); if (k >= 0) S.src = k; }
   // name in game: start from the mod's own name for the racer, or the racer's normal name
-  S.defaultName = r.gameName || r.sources[S.src].racer;
+  // (a pack has one name file for several characters, so there each one starts from its racer's name)
+  S.defaultName = (r.sources.length > 1 ? '' : r.gameName) || r.sources[S.src].racer;
   if (!$('gameName').dataset.edited || $('gameName').dataset.mod !== myMod.dir) {
     $('gameName').value = S.defaultName; delete $('gameName').dataset.edited; $('gameName').dataset.mod = myMod.dir;
   }
@@ -424,17 +427,29 @@ function renderResult() {
       <div><b>${esc(name)}</b><span class="muted">${sub}</span></div>
     </div>`;
   }).join('')}</div>${r.sources[S.src] && !r.sources[S.src].mod_has_icon ? '<div class="muted" style="margin-top:8px">This mod has no icon of its own, so the slot keeps its normal icon.</div>' : ''}`;
-  $('srcBox').querySelectorAll('.src').forEach((d) => (d.onclick = () => { if (S.src === +d.dataset.i) return; S.src = +d.dataset.i; S.tgt = null; renderSources(); }));
+  $('srcBox').querySelectorAll('.src').forEach((d) => (d.onclick = () => {
+    if (S.src === +d.dataset.i) return;
+    S.src = +d.dataset.i; S.tgt = null;
+    // a pack: switching character also switches the starting name, unless the user typed one
+    if (S.inspect.sources.length > 1 && !$('gameName').dataset.edited) { S.defaultName = S.inspect.sources[S.src].racer; $('gameName').value = S.defaultName; }
+    $('nameCard').classList.toggle('hidden', !S.inspect.sources[S.src].name_key);
+    renderSources();
+  }));
 }
 function renderTargets() {
   const s = S.inspect.sources[S.src];
+  // only one place to go: pick it
+  if (S.tgt == null && s.targets.length === 1) S.tgt = 0;
   const t = s.targets[S.tgt];
   // both sides show the slots as the game has them: from the mod's slot to the one picked below
   $('arrowRow').innerHTML = `<div class="tilewrap" style="cursor:default">${iconHtml(s.game_icon || s.icon)}<div class="lbl"><span class="muted">From</span> ${esc(s.racer)} · ${esc(s.label)}</div></div><div class="arrow">➜</div>` +
-    (t ? `<div class="tilewrap" style="cursor:default">${iconHtml(t.icon)}<div class="lbl"><span class="muted">To</span> ${colorDot(t.color)}${esc(t.label)}</div></div>` : '<div class="muted">pick a slot below</div>');
+    (t ? `<div class="tilewrap" style="cursor:default">${iconHtml(t.icon)}<div class="lbl"><span class="muted">To</span> ${colorDot(t.color)}${esc(t.label)}</div></div>`
+      : !s.targets.length ? `<div class="muted">Nowhere to move this one: ${esc(s.racer)} has no other slots (DLC racers don't have AI skins).${S.inspect.sources.length > 1 ? ' Pick another character in step 3.' : ''}</div>`
+      : '<div class="muted">pick a slot below</div>');
   const hidden = (t) => !S.showAll && /^AI Skin [23]\b/.test(t.label);
   $('tiles').innerHTML = s.targets.map((t, j) => (hidden(t) && j !== S.tgt) ? '' : `<div class="tilewrap ${j === S.tgt ? 'on' : ''}" data-j="${j}">${iconHtml(t.icon)}<div class="lbl">${colorDot(t.color)}${esc(t.label)}</div></div>`).join('');
 
+  $('tiles').classList.toggle('hidden', !s.targets.length);
   $('tiles').querySelectorAll('.tilewrap').forEach((d) => (d.onclick = () => { S.tgt = +d.dataset.j; renderTargets(); renderResult(); }));
   $('nameNote').innerHTML = !t ? 'Pick a slot in step 4. Leave it as it is to keep the mod\'s name.'
     : (t.name_key || '').startsWith('table:') ? `This slot has its own name (from Separate, Ai Skins!), so only ${esc(t.label)} is renamed.`
@@ -462,7 +477,7 @@ function updateOut() {
     $('outName').value = isOpt ? (slot + (v ? ' - ' + v : '')) : `${S.mod.name}${v ? ' ' + v : ''} (${slot})`;
   }
   $('btnPort').disabled = !t || S.busy;
-  $('btnPort').textContent = t ? `Move to ${t.label}` : 'Pick a slot first';
+  $('btnPort').textContent = t ? `Move to ${t.label}` : s && !s.targets.length ? 'No slot to move to' : 'Pick a slot first';
 }
 $('outName').oninput = () => ($('outName').dataset.edited = '1');
 $('gameName').oninput = () => { $('gameName').dataset.edited = '1'; renderResult(); };
@@ -645,7 +660,7 @@ async function checkVoices() {
   b.className = 'pill' + (st.on ? ' ok' : '');
   b.textContent = st.on ? `🔊 Separate voices${st.slots.length ? ` (${st.slots.length})` : ''}` : '🔊 Shared voices';
   b.title = st.on ? 'AI skins with their own voice speak with it when you pick them. Click to turn this off.'
-    : 'All AI skins of a character share one voice. Click to give AI skins their own voices (installs UE4SS).';
+    : 'All AI skins of a character share one voice. Click to give AI skins their own voices (installs UE4SS, experimental).';
 }
 function voiceBar(html, btn, cancel) {
   $('voiceBar').classList.remove('hidden', 'done', 'err');
@@ -655,7 +670,7 @@ function voiceBar(html, btn, cancel) {
 }
 $('pVoice').onclick = () => {
   if (voiceBusy || !voiceSt) return;
-  if (!voiceSt.on) voiceBar('<b>Give AI skins their own voices?</b> This installs <b>UE4SS</b> (a mod loader) &amp; a small script into the game folder. After that, each AI Skin 1-3 slot gets its own voice. <b>Close the game first.</b>', 'Install', true);
+  if (!voiceSt.on) voiceBar('<b>Give AI skins their own voices?</b> This installs <b>UE4SS</b> (a mod loader) &amp; a small script into the game folder. After that, each AI Skin 1-3 slot gets its own voice. <b>Close the game first.</b><br>⚠ <b>Experimental</b> - more a proof of concept than a finished feature. Some voice lines may slip through: the first time a line plays in a race, you may hear the normal AI voice instead.', 'Install', true);
   else voiceBar('<b>Turn separate voices off?</b> AI skins go back to sharing one voice per character. UE4SS stays installed (other mods may use it).', 'Turn off', true);
   $('voiceBar').dataset.act = voiceSt.on ? 'off' : 'on';
 };
@@ -705,6 +720,7 @@ async function checkSetup() {
       <div class="stact"><button class="primary big" id="stCombo">${t}</button><button id="stLater" class="small">Later</button></div><div id="stMsg" class="note"></div>`;
   } else if (!st.voices.on && !st.voicesAsked) {
     html = setupHead(2) + `<h3>Own voices for AI skins?</h3><p class="lead">In the normal game, every AI skin of a character shares one voice. This installs <b>UE4SS</b> (a mod loader) &amp; a small script into the game folder, so each AI Skin 1-3 slot can have its own voice: when you move a skin that has a voice, that slot keeps it. <b>Close the game first.</b></p>
+      <div class="note" style="margin-bottom:10px">⚠ <b>Experimental</b> - more a proof of concept than a finished feature. Some voice lines may slip through: the first time a line plays in a race, you may hear the normal AI voice instead.</div>
       <div class="stact"><button class="primary big" id="stVoice">Install UE4SS</button><button id="stNoVoice" class="small">No thanks</button></div><div class="note">You can change this any time with the 🔊 button at the top.</div><div id="stMsg" class="note"></div>`;
   }
   box.classList.toggle('hidden', !html);

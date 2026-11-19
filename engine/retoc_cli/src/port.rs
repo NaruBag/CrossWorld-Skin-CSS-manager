@@ -342,7 +342,21 @@ fn rename_legacy(data: &[u8], renames: &HashMap<String, String>, new_package_nam
     for e in h.cell_exports.iter_mut() {
         e.serial_offset -= hs;
     }
-    let names: Vec<String> = h.name_map.copy_raw_names().into_iter().map(|n| renames.get(&n).cloned().unwrap_or(n)).collect();
+    // UE stores names ending in _<number> as "base + number" ("Tex_ncl1_1" is "Tex_ncl1" #1 in the name map),
+    // so a rename of ".../Tex_ncl1_1" must also apply to ".../Tex_ncl1", or that reference keeps the old path
+    let mut renames = renames.clone();
+    for (k, v) in renames.clone() {
+        if let (Some((kb, ks)), Some((vb, vs))) = (k.rsplit_once('_'), v.rsplit_once('_'))
+            && ks == vs
+            && !ks.is_empty()
+            && ks.bytes().all(|b| b.is_ascii_digit())
+            && (ks == "0" || !ks.starts_with('0'))
+        {
+            renames.entry(kb.to_string()).or_insert_with(|| vb.to_string());
+        }
+    }
+    let lc: HashMap<String, String> = renames.iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
+    let names: Vec<String> = h.name_map.copy_raw_names().into_iter().map(|n| renames.get(&n).or_else(|| lc.get(&n.to_lowercase())).cloned().unwrap_or(n)).collect();
     h.name_map = FPackageNameMap::create_from_names(names);
     h.summary.package_name = new_package_name.to_string();
     let mut out = Cursor::new(Vec::new());
@@ -366,6 +380,8 @@ pub struct Loaded {
     base: IoStoreBackend,
     rows: Vec<DriverRow>,
     mod_pkgs: BTreeMap<String, FPackageId>,
+    /// lowercased mod package names (the game treats package paths case-insensitively, mods don't always match its casing)
+    mod_lc: HashSet<String>,
     /// which mod container (index into the utocs given to load) each mod package comes from
     mod_src: BTreeMap<String, usize>,
     _tmp: Option<TempDir>,
@@ -459,7 +475,7 @@ fn slot_mesh(p: &str) -> Option<String> {
         [s, n, m, f] if s.starts_with("Skin") => (*n, *m, *f),
         _ => return None,
     };
-    if mesh_dir != "Mesh" || file.strip_prefix("SK_") != Some(name) {
+    if !mesh_dir.eq_ignore_ascii_case("Mesh") || !file.get(..3).is_some_and(|x| x.eq_ignore_ascii_case("SK_")) || !file[3..].eq_ignore_ascii_case(name) {
         return None;
     }
     Some(format!("/Asset/Character/{rest}"))
@@ -539,6 +555,18 @@ pub fn load(env: &Env, utocs: &[PathBuf]) -> Result<Loaded> {
         base_list.push(open_mod_utoc(env, x, &mut tmp)?);
     }
     containers.push(Box::new(IoStoreBackend::open(env.game_dir.join("UNION/Content/Paks"), env.config.clone())?));
+    // Last resort: the other mods in the Mods folder. A skin can use assets that only another mod ships
+    // (e.g. a shared custom master material); without them those references are lost and the model turns grey.
+    let given: Vec<PathBuf> = utocs.iter().chain(env.extra.iter()).chain(std::iter::once(&env.csse)).filter_map(|p| p.canonicalize().ok()).collect();
+    for p in walk(&env.mods_dir) {
+        let is_utoc = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("utoc"));
+        if !is_utoc || p.canonicalize().ok().is_some_and(|c| given.contains(&c)) {
+            continue;
+        }
+        if let Ok(c) = IoStoreContainer::open(&p, env.config.clone()) {
+            containers.push(Box::new(c));
+        }
+    }
     let store = IoStoreBackend::from_containers(containers);
     base_list.push(Box::new(IoStoreBackend::open(env.game_dir.join("UNION/Content/Paks"), env.config.clone())?));
     let base = IoStoreBackend::from_containers(base_list);
@@ -546,7 +574,8 @@ pub fn load(env: &Env, utocs: &[PathBuf]) -> Result<Loaded> {
     if rows.is_empty() {
         bail!("Couldn't read the racer table (DT_DriverData). Is True CSSE / Separate, Ai Skins! up to date?");
     }
-    Ok(Loaded { store, base, rows, mod_pkgs, mod_src, _tmp: tmp })
+    let mod_lc = mod_pkgs.keys().map(|k| k.to_lowercase()).collect();
+    Ok(Loaded { store, base, rows, mod_pkgs, mod_lc, mod_src, _tmp: tmp })
 }
 
 fn rand_suffix() -> u128 {
@@ -554,10 +583,14 @@ fn rand_suffix() -> u128 {
 }
 
 impl Loaded {
+    /// does the mod ship this package (case-insensitive, like the game)
+    pub fn has(&self, pkg: &str) -> bool {
+        self.mod_lc.contains(&pkg.to_lowercase())
+    }
     pub fn sources(&self) -> Vec<DriverRow> {
-        let mut sources: Vec<DriverRow> = self.rows.iter().filter(|r| self.mod_pkgs.contains_key(&r.mesh)).cloned().collect();
+        let mut sources: Vec<DriverRow> = self.rows.iter().filter(|r| self.has(&r.mesh)).cloned().collect();
         if sources.is_empty() {
-            sources = self.rows.iter().filter(|r| self.mod_pkgs.keys().any(|k| k.starts_with(&r.root()))).cloned().collect();
+            sources = self.rows.iter().filter(|r| { let root = r.root().to_lowercase(); self.mod_lc.iter().any(|k| k.starts_with(&root)) }).cloned().collect();
             let mut seen = HashSet::new();
             sources.retain(|r| seen.insert(r.root()));
         }
@@ -621,15 +654,15 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
 
     log_fn(&format!("Reading {} ({})", racer_name(&src.id), src.slot_label()));
     let mut new_path: BTreeMap<String, String> = BTreeMap::new();
-    new_path.insert(src.mesh.clone(), tgt.mesh.clone());
+    new_path.insert(src.mesh.to_lowercase(), tgt.mesh.clone());
     let mut queue: VecDeque<String> = VecDeque::from([src.mesh.clone()]);
     // the "side" mesh (SK_<X>side) is what the race intro shows when racers drive in: move it too
     let src_side = format!("{}side", src.mesh);
     let tgt_side = format!("{}side", tgt.mesh);
-    let has_side = l.mod_pkgs.contains_key(&src_side);
+    let has_side = l.has(&src_side);
     if has_side {
         log_fn(&format!("Intro model {} -> {}", basename(&src_side), basename(&tgt_side)));
-        new_path.insert(src_side.clone(), tgt_side.clone());
+        new_path.insert(src_side.to_lowercase(), tgt_side.clone());
         queue.push_back(src_side.clone());
     }
     let mut loaded: BTreeMap<String, LegacyPkg> = BTreeMap::new();
@@ -638,26 +671,27 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
         let lp = load_legacy(&ctx, &writer, &legacy_dir, &pkg)?;
         let h = legacy_header(&lp.asset)?;
         for (dep, class) in legacy_imports(&h) {
-            if new_path.contains_key(&dep) {
+            if new_path.contains_key(&dep.to_lowercase()) {
                 continue;
             }
             if !CLONE_CLASSES.contains(&class.as_str()) {
                 // assets the mod ADDS (custom skeleton, anim BP, master materials...) travel along unchanged
-                if l.mod_pkgs.contains_key(&dep) && !l.base.has_chunk_id(pkg_chunk(&dep)) {
-                    new_path.insert(dep.clone(), dep.clone());
+                if l.has(&dep) && !l.base.has_chunk_id(pkg_chunk(&dep)) {
+                    new_path.insert(dep.to_lowercase(), dep.clone());
                     keep.insert(dep.clone());
                     queue.push_back(dep);
                 }
                 continue;
             }
-            if !(l.mod_pkgs.contains_key(&dep) || dep.starts_with(&src_root)) {
+            let under_root = dep.len() >= src_root.len() && dep.is_char_boundary(src_root.len()) && dep[..src_root.len()].eq_ignore_ascii_case(&src_root);
+            if !(l.has(&dep) || under_root) {
                 continue;
             }
-            let np = match dep.strip_prefix(&src_root) {
+            let np = match under_root.then(|| &dep[src_root.len()..]) {
                 Some(rest) => format!("{tgt_root}{rest}"),
                 None => format!("{tgt_root}Ported/{}", basename(&dep)),
             };
-            new_path.insert(dep.clone(), np);
+            new_path.insert(dep.to_lowercase(), np);
             queue.push_back(dep);
         }
         loaded.insert(pkg, lp);
@@ -667,10 +701,10 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
     if req.copy_icons {
         for (s, t) in [(&src.icon, &tgt.icon), (&src.hud, &tgt.hud), (&src.cut, &tgt.cut)] {
             if let (Some(s), Some(t)) = (s, t)
-                && l.mod_pkgs.contains_key(s)
+                && l.has(s)
             {
                 had_icons = true;
-                new_path.insert(s.clone(), t.clone());
+                new_path.insert(s.to_lowercase(), t.clone());
                 loaded.insert(s.clone(), load_legacy(&ctx, &writer, &legacy_dir, s)?);
                 name_renames_for.insert(s.clone(), (basename(s).to_string(), basename(t).to_string()));
             }
@@ -687,7 +721,7 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
             let tb = format!("UI_Stamp_{code}_{tn:02}");
             let tp = format!("{}/{tb}", sp.rsplit_once('/').map(|x| x.0).unwrap_or(""));
             log_fn(&format!("Stamp {} -> {tb}", basename(&sp)));
-            new_path.insert(sp.clone(), tp);
+            new_path.insert(sp.to_lowercase(), tp);
             loaded.insert(sp.clone(), load_legacy(&ctx, &writer, &legacy_dir, &sp)?);
             name_renames_for.insert(sp.clone(), (basename(&sp).to_string(), tb));
             had_icons = true;
@@ -701,7 +735,7 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
     let path_renames: HashMap<String, String> = new_path.iter().map(|(a, b)| (a.clone(), b.clone())).collect();
     let mut copied = vec![];
     for (old, lp) in &loaded {
-        let new = &new_path[old];
+        let new = &new_path[&old.to_lowercase()];
         // kept packages stay at their path, but what they point to must follow the move too (e.g. a mod's
         // own material that uses textures we renamed onto the new slot), otherwise those textures go missing
         let mut renames = path_renames.clone();
@@ -718,11 +752,11 @@ pub fn do_port(env: &Env, l: &Loaded, req: &PortRequest, log_fn: &dyn Fn(&str)) 
         for (ext, data) in &lp.others {
             std::fs::write(base.with_extension(ext), data)?;
         }
-        let from_mod = l.mod_pkgs.contains_key(old);
+        let from_mod = l.has(old);
         log_fn(&format!("Copied {}", short(old).rsplit('/').next().unwrap_or("")));
         copied.push((short(old), short(new), from_mod));
     }
-    let skipped: Vec<String> = l.mod_pkgs.keys().filter(|k| !new_path.contains_key(*k)).map(|s| short(s)).collect();
+    let skipped: Vec<String> = l.mod_pkgs.keys().filter(|k| !new_path.contains_key(&k.to_lowercase())).map(|s| short(s)).collect();
 
     let pretty_slot = tgt.slot_label().replace(" (", " - ").replace(')', "");
     let out_name = req.out_name.clone().filter(|s| !s.trim().is_empty()).unwrap_or_else(|| format!("{} ({})", req.mod_name, pretty_slot));
@@ -833,7 +867,7 @@ pub fn json_inspect(env: &Env, utocs: &[PathBuf]) -> Result<serde_json::Value> {
     let game_icon = |p: &Option<String>| -> serde_json::Value { p.as_ref().and_then(|p| icon_data_url(&base_ctx, &tmp.0, p)).map(serde_json::Value::String).unwrap_or(serde_json::Value::Null) };
     let mut out = vec![];
     for (i, s) in l.sources().iter().enumerate() {
-        let mod_has_icon = s.icon.as_ref().is_some_and(|i| l.mod_pkgs.contains_key(i));
+        let mod_has_icon = s.icon.as_ref().is_some_and(|i| l.has(i));
         let targets: Vec<serde_json::Value> = l
             .targets(s)
             .iter()

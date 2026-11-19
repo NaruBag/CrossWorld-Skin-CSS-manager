@@ -172,7 +172,7 @@ function modSummary(dir) {
 }
 
 // Which containers touch racer models? Cached by path + size + date so the list stays instant.
-const classifyFile = () => path.join(app.getPath('userData'), 'skin-check-cache-v2.json');
+const classifyFile = () => path.join(app.getPath('userData'), 'skin-check-cache-v3.json');
 async function classify(files) {
   let cache = {};
   try { cache = JSON.parse(fs.readFileSync(classifyFile(), 'utf8')); } catch {}

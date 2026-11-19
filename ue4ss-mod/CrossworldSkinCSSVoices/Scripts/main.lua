@@ -37,7 +37,14 @@ end
 
 local KEEP = 0x0E000000
 local RF_NEED = 0x400 | 0x1000 | 0x2000   -- NeedLoad | NeedPostLoad | NeedPostLoadSubobjects
+local RF_GONE = 0x8000 | 0x10000          -- BeginDestroyed | FinishDestroyed
 local function valid(o) return type(o) == "userdata" and o:IsValid() end
+-- an object the game is still loading / creating / destroying: don't read anything from it yet
+local function settled(o)
+  local busy = true
+  pcall(function() busy = o:HasAnyFlags(RF_NEED | RF_GONE) end)
+  return not busy
+end
 local function nm(o)
   if type(o) ~= "userdata" then return "nil" end
   local ok, r = pcall(function() if o:IsValid() then return o:GetFullName() end return "nil" end)
@@ -68,12 +75,14 @@ local function sheetFor(s)
   return sheets[s.sheet]
 end
 
+local lastDone = ""
 local function retargetOne(c)
   local s = active
   if not s then return "skip" end
   local key = addr(c)
   if done[key] then return "done" end
   if seen[key] then return "skip" end
+  if not settled(c) then return "wait" end
   if not nm(c):find(s.dir, 1, true) then seen[key] = true; return "skip" end
   local okn, name = pcall(function() return str(c.CueName) end)
   if not (okn and name and name ~= "") then return "wait" end
@@ -84,15 +93,20 @@ local function retargetOne(c)
   pcall(function() oldSheet = c.CueSheet end)
   pcall(function() c.CueSheet = sheet; c.CueName = name:gsub(s.from, s.to) end)
   done[key] = { c = c, name = name, sheet = oldSheet }
+  lastDone = name .. " | " .. nm(c)
   return "done"
 end
 local function retargetAll()
   if not active then return end
   local n = 0
-  for _, c in ipairs(FindAllOf("SoundAtomCue") or {}) do
-    if valid(c) and not done[addr(c)] and retargetOne(c) == "done" then n = n + 1 end
+  local list = {}
+  pcall(function() list = FindAllOf("SoundAtomCue") or {} end)
+  for _, c in ipairs(list) do
+    -- one bad line must not stop the others from switching
+    local ok, r = pcall(function() return valid(c) and not done[addr(c)] and retargetOne(c) end)
+    if ok and r == "done" then n = n + 1 end
   end
-  if n > 0 then log("voice lines switched: " .. n) end
+  if n > 0 then log("voice lines switched: " .. n .. (n <= 3 and ("  (" .. lastDone .. ")") or "")) end
 end
 local function restoreAll()
   local n = 0
@@ -123,7 +137,7 @@ end
 local function playerDriverId()
   local byCar = {}
   for _, p in ipairs(FindAllOf("BP_DriverPawn_C") or {}) do
-    if valid(p) then
+    if valid(p) and settled(p) then
       local id = p.DriverId
       pcall(function() local o = p.Owner; if valid(o) then byCar[addr(o)] = id end end)
       pcall(function()
@@ -134,9 +148,11 @@ local function playerDriverId()
     end
   end
   for _, pc in ipairs(FindAllOf("BP_RacePlayerController_C") or {}) do
+    if not (valid(pc) and settled(pc)) then goto next_pc end
     local id = nil
     pcall(function() local pw = pc.Pawn; if valid(pw) then id = byCar[addr(pw)] end end)
     if id then return id end
+    ::next_pc::
   end
   return nil
 end
@@ -156,7 +172,7 @@ local function tick()
       for _, r in ipairs(FindAllOf("BP_MenuRacerPreview_C") or {}) do
         if valid(r) then
           local d = r.DriverActor
-          if valid(d) then
+          if valid(d) and settled(r) and settled(d) then
             local k, id = addr(r), d.DriverId
             if previews[k] ~= id then previews[k] = id; newest = id end
           end
@@ -165,41 +181,24 @@ local function tick()
     end)
     if newest ~= nil then use(newest, "select screen") end
   end
-  if active and os.clock() - lastScan > 3.0 then retargetAll(); lastScan = os.clock() end
+  if active and os.clock() - lastScan > 0.5 then retargetAll(); lastScan = os.clock() end
 end
 
--- lines that load later (results, podium): switch them once the game has finished loading them
-local queue = {}
-NotifyOnNewObject("/Script/CriWareRuntime.SoundAtomCue", function(c)
-  if active then queue[#queue + 1] = { c = c, t = os.clock() } end
-end)
-LoopAsync(20, function()
-  if #queue == 0 then return false end
-  ExecuteInGameThread(function()
-    local now = os.clock()
-    for i = #queue, 1, -1 do
-      local q = queue[i]
-      local drop = false
-      if not (active and valid(q.c)) or now - q.t > 3.0 then
-        drop = true
-      elseif now - q.t > 0.02 then
-        local busy = true
-        pcall(function() busy = q.c:HasAnyFlags(RF_NEED) end)
-        if not busy and retargetOne(q.c) ~= "wait" then drop = true end
-      end
-      if drop then table.remove(queue, i) end
-    end
-  end)
-  return false
-end)
+-- Lines that load later (race, results, podium) are picked up by the scan in tick(), on the game thread.
+-- (No NotifyOnNewObject: it fires on the game's loading thread, and running Lua there at the same time as
+-- the game thread corrupts the script's state and crashes the game.)
 
+local function onGameThread()
+  local ok, e = pcall(tick)
+  if not ok then log("error " .. tostring(e)) end
+  return false   -- keep looping
+end
 if next(enabled) then
-  LoopAsync(250, function()
-    ExecuteInGameThread(function()
-      local ok, e = pcall(tick)
-      if not ok then log("error " .. tostring(e)) end
-    end)
-    return false
-  end)
+  if LoopInGameThreadWithDelay then
+    -- runs on the game thread itself: no script code ever runs on another thread
+    LoopInGameThreadWithDelay(250, onGameThread)
+  else
+    LoopAsync(250, function() ExecuteInGameThread(onGameThread); return false end)
+  end
 end
 log("loaded")
